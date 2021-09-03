@@ -5,6 +5,13 @@ use proc_macro2::Span;
 use quote::{ToTokens, quote, quote_spanned};
 use syn::{FnArg, Ident, ItemFn, Pat, ReturnType, Type, spanned::Spanned};
 
+fn pattern_from_arg<'a>(arg: &'a FnArg)-> &'a Pat {
+    match arg {
+        FnArg::Receiver(_) => unimplemented!("I don't know what to do about this yet"),
+        FnArg::Typed(pat_type) => &*pat_type.pat,
+    }
+}
+
 pub fn gen_negated_function(func: ItemFn) -> TokenStream {
     let negated_identifier = {
         let signature = &func.sig;
@@ -48,13 +55,6 @@ pub fn gen_negated_function(func: ItemFn) -> TokenStream {
         &mut signature.ident,
         Ident::new(&negated_identifier, Span::call_site()),
     );
-
-    let pattern_from_arg = |arg: &FnArg| -> Pat {
-        match arg {
-            FnArg::Receiver(_) => unimplemented!("I don't know what to do about this yet"),
-            FnArg::Typed(pat_type) => (&*pat_type.pat).clone(),
-        }
-    };
 
     let arguments = signature.inputs.iter().map(pattern_from_arg);
 
