@@ -2,8 +2,8 @@ use std::mem;
 
 use proc_macro::TokenStream;
 use proc_macro2::Span;
-use quote::{quote, ToTokens};
-use syn::{FnArg, Ident, ItemFn, Pat, ReturnType, Type};
+use quote::{ToTokens, quote, quote_spanned};
+use syn::{FnArg, Ident, ItemFn, Pat, ReturnType, Type, spanned::Spanned};
 
 pub fn gen_negated_function(func: ItemFn) -> TokenStream {
     let negated_identifier = {
@@ -18,7 +18,17 @@ pub fn gen_negated_function(func: ItemFn) -> TokenStream {
         // new-types around bool will fail this check :c
         assert!(returns_bool(output_type));
 
-        negate_identifier(&signature.ident)
+        match negate_identifier(&signature.ident) {
+            Some(id) => id,
+            None => {
+                let err = quote_spanned! {
+                    func.span() =>
+                    compile_error!("`negate` can only be applied to functions.");
+                };
+
+                return err.into();
+            }
+        }
     };
 
     // We must replicate the original function
@@ -64,14 +74,16 @@ fn returns_bool(return_type: &ReturnType) -> bool {
     }
 }
 
-fn negate_identifier(ident: &Ident) -> String {
+fn negate_identifier(ident: &Ident) -> Option<String> {
     let identifier = ident.to_string();
 
-    assert!(identifier.starts_with("is_"));
+    if !identifier.starts_with("is_") {
+        return None;
+    }
 
     // Assuming we get an input of the form `is_adjective` (e.g. `is_even`, `is_odd`),
     // we want to extract just the adjective in order to negate it right after.
     let adjective = identifier.get(3..).expect("The identifier is too short!");
 
-    format!("is_not_{}", adjective)
+    Some(format!("is_not_{}", adjective))
 }
