@@ -1,0 +1,15 @@
+[package]
+name = "negate"
+version = "0.1.0"
+edition = "2018"
+authors = ["Vinícius Rodrigues Miguel <vrmiguel99@gmail.com>"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = { version="1.0.75",features = ["full","fold"] }
+quote = "1.0.8"
+proc-macro2 = { version = "1.0.26", default-features = false }
