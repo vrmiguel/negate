@@ -16,7 +16,14 @@ pub fn gen_negated_function(func: ItemFn) -> TokenStream {
         //
         // We're not currently able to type resolve so aliases or
         // new-types around bool will fail this check :c
-        assert!(returns_bool(output_type));
+        if !returns_bool(output_type) {
+            let err = quote_spanned! {
+                func.span() =>
+                compile_error!("the function does not seem to return a boolean value.");
+            };
+
+            return err.into();
+        }
 
         match negate_identifier(&signature.ident) {
             Some(id) => id,
@@ -63,6 +70,10 @@ pub fn gen_negated_function(func: ItemFn) -> TokenStream {
     tokens.into()
 }
 
+/// Returns true if the given return type is a boolean value.
+///
+/// Attribute macros are not able to type resolve (at least at of writing) so
+/// aliases or new-types around bool will fail this check.
 fn returns_bool(return_type: &ReturnType) -> bool {
     fn type_is_bool(ty: &Type) -> bool {
         matches!(ty, Type::Path(type_path) if type_path.to_token_stream().to_string() == "bool")
