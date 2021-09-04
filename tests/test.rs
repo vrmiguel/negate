@@ -22,7 +22,7 @@ enum UnsignedInteger {
 }
 
 impl UnsignedInteger {
-    // #[negate]
+    #[negate]
     pub fn is_zero(&self) -> bool {
         let self_as_u64: u64 = self.into();
         self_as_u64 == 0
@@ -46,6 +46,13 @@ fn is_equal_test_case() {
     assert!(is_not_equal(3, 2));
     assert!(!is_equal("Andrew", "Johnathan"));
     assert!(is_not_equal("Andrew", "Johnathan"));
+}
+
+#[test]
+fn associated_fn_is_zero() {
+    let int = UnsignedInteger::U32(5);
+    assert!(!int.is_zero());
+    assert!(int.is_not_zero());   
 }
 
 #[test]

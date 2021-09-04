@@ -67,10 +67,26 @@ pub fn gen_negated_function(func: ItemFn) -> TokenStream {
     new_signature.ident = Ident::new(&negated_identifier, Span::call_site());
 
     if is_associated_function(&new_signature) {
-        todo!("not done yet, chief");
+        generate_associated_fn(original_function, new_signature)
     } else {
         generate_non_associated_fn(original_function, new_signature)
     }
+}
+
+fn generate_associated_fn(original_function: ItemFn, new_signature: Signature) -> TokenStream {
+    let visibility = &original_function.vis;    
+    let arguments = new_signature.inputs.iter().skip(1).map(pattern_from_arg);
+    let original_identifier = &original_function.sig.ident;
+
+    let tokens = quote! {
+        #original_function
+
+        #visibility #new_signature {
+            !(self.#original_identifier(#(#arguments),*) )
+        }
+    };
+
+    tokens.into()
 }
 
 /// Generates a negated function, where this function is
