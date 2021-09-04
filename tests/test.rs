@@ -5,7 +5,7 @@ fn is_even(x: i32) -> bool {
     x % 2 == 0
 }
 
-#[negate(docs = "hauahau")]
+#[negate(docs = "`is_equal returns true if the two given arguments are equal!")]
 fn is_equal<T>(x: T, y: T) -> bool
 where
     T: Eq,

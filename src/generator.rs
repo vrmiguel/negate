@@ -10,7 +10,7 @@ use syn::{spanned::Spanned, FnArg, Ident, ItemFn, Pat, ReturnType, Signature, Ty
 /// Assumes that this argument isn't a receiver (e.g. `self` or `&self` or `&mut self`)
 fn pattern_from_arg(arg: &FnArg) -> &Pat {
     match arg {
-        FnArg::Receiver(_) => unimplemented!("I don't know what to do about this yet"),
+        FnArg::Receiver(_) => unreachable!("`pattern_from_arg` should never receive patterns"),
         FnArg::Typed(pat_type) => &*pat_type.pat,
     }
 }
