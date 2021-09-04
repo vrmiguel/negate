@@ -3,6 +3,8 @@ use proc_macro2::Span;
 use quote::{quote, quote_spanned, ToTokens};
 use syn::{spanned::Spanned, FnArg, Ident, ItemFn, Pat, ReturnType, Signature, Type};
 
+use crate::args::Args;
+
 /// Extracts a type ascription pattern from a function argument
 ///
 /// e.g.: if the argument is `name: &str`, returns the pattern that represents `name`.
@@ -24,7 +26,7 @@ fn is_associated_function(signature: &Signature) -> bool {
     signature.inputs.iter().any(is_receiver)
 }
 
-pub fn gen_negated_function(func: ItemFn, maybe_docs: Option<String>) -> TokenStream {
+pub fn gen_negated_function(func: ItemFn, args: Args) -> TokenStream {
     let negated_identifier = {
         let signature = &func.sig;
 
@@ -67,9 +69,9 @@ pub fn gen_negated_function(func: ItemFn, maybe_docs: Option<String>) -> TokenSt
     new_signature.ident = Ident::new(&negated_identifier, Span::call_site());
 
     if is_associated_function(&new_signature) {
-        generate_associated_fn(original_function, new_signature, maybe_docs)
+        generate_associated_fn(original_function, new_signature, args)
     } else {
-        generate_non_associated_fn(original_function, new_signature, maybe_docs)
+        generate_non_associated_fn(original_function, new_signature, args)
     }
 }
 
@@ -98,7 +100,7 @@ pub fn gen_negated_function(func: ItemFn, maybe_docs: Option<String>) -> TokenSt
 fn generate_associated_fn(
     original_function: ItemFn,
     new_signature: Signature,
-    maybe_docs: Option<String>,
+    args: Args,
 ) -> TokenStream {
     let visibility = &original_function.vis;
     let arguments = new_signature.inputs.iter().skip(1).map(pattern_from_arg);
@@ -108,7 +110,7 @@ fn generate_associated_fn(
         let ident = original_identifier.to_string();
         format!("This is an automatically generated function that denies [`{}`].\nConsult the original function for more information.", ident)
     };
-    let docs = maybe_docs.unwrap_or_else(gen_docs);
+    let docs = args.docs.unwrap_or_else(gen_docs);
 
     let tokens = quote! {
         #original_function
@@ -138,7 +140,7 @@ fn generate_associated_fn(
 fn generate_non_associated_fn(
     original_function: ItemFn,
     new_signature: Signature,
-    maybe_docs: Option<String>,
+    args: Args,
 ) -> TokenStream {
     let visibility = &original_function.vis;
     let arguments = new_signature.inputs.iter().map(pattern_from_arg);
@@ -148,7 +150,7 @@ fn generate_non_associated_fn(
         let ident = original_identifier.to_string();
         format!("This is an automatically generated function that denies [`{}`].\nConsult the original function for more information.", ident)
     };
-    let docs = maybe_docs.unwrap_or_else(gen_docs);
+    let docs = args.docs.unwrap_or_else(gen_docs);
 
     let tokens = quote! {
         #original_function

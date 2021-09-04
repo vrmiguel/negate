@@ -1,9 +1,12 @@
+mod args;
+mod error;
 mod generator;
 
 use proc_macro::TokenStream;
 use quote::quote_spanned;
-use syn::{parse_macro_input, spanned::Spanned, AttributeArgs, Item, Lit, NestedMeta};
+use syn::{parse_macro_input, spanned::Spanned, AttributeArgs, Item};
 
+use crate::args::parse_args;
 use crate::generator::gen_negated_function;
 
 /// The [`negate`](crate::negate) attribute macro creates a new function that _negates_ the function it was given.
@@ -39,23 +42,20 @@ use crate::generator::gen_negated_function;
 /// assert!(my_name.is_not_uppercase());
 /// ```
 #[proc_macro_attribute]
-pub fn negate(args: TokenStream, input: TokenStream) -> TokenStream {
-    let args = parse_macro_input!(args as AttributeArgs);
+pub fn negate(attrib_args: TokenStream, input: TokenStream) -> TokenStream {
+    let args = parse_macro_input!(attrib_args as AttributeArgs);
 
     let item: syn::Item = syn::parse(input).expect("failed to parse input into `syn::Item`");
 
-    let maybe_docs = match parse_arg(args) {
-        Ok(maybe_docs) => maybe_docs,
-        Err(_) => {
-            let err = quote_spanned! {
-                item.span() => compile_error!("input to `negate` must be a name-value pair, such as `docs = \"my documentation\"`");
-            };
-            return err.into();
-        }
+    let span = item.span();
+
+    let args = match parse_args(args) {
+        Ok(parsed_args) => parsed_args,
+        Err(err) => return crate::error::build_compile_error(span, err)
     };
 
     match item {
-        Item::Fn(function) => gen_negated_function(function, maybe_docs),
+        Item::Fn(function) => gen_negated_function(function, args),
         other => {
             let err = quote_spanned! {
                 other.span() =>
@@ -65,45 +65,4 @@ pub fn negate(args: TokenStream, input: TokenStream) -> TokenStream {
             err.into()
         }
     }
-}
-
-/// The user-supplied docs for a negated function
-type MaybeDocs = Option<String>;
-
-fn parse_arg(args: AttributeArgs) -> Result<MaybeDocs, ()> {
-    match args.len() {
-        // User didn't supply any docs to the generated functions, so
-        // we'll use our default documentation.
-        0 => return Ok(None),
-        1 => {}
-        _ => panic!("too many arguments supplied to macro"), // _ => return Err("too many arguments supplied to macro")
-    }
-
-    let parse_arg_into_str = |arg: &NestedMeta| -> Option<_> {
-        let meta = match arg {
-            NestedMeta::Meta(meta) => meta,
-            NestedMeta::Lit(_) => None?,
-        };
-
-        let pair = match meta {
-            syn::Meta::NameValue(pair) => pair,
-            _ => None?,
-        };
-
-        let lit = if !pair.path.is_ident("docs") {
-            None?
-        } else {
-            &pair.lit
-        };
-
-        if let Lit::Str(lit_str) = lit {
-            Some(lit_str.value())
-        } else {
-            None
-        }
-    };
-
-    let user_supplied_docs = parse_arg_into_str(&args[0]).ok_or(())?;
-
-    Ok(Some(user_supplied_docs))
 }
