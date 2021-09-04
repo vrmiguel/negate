@@ -1,5 +1,3 @@
-use std::mem;
-
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::{quote, ToTokens};
@@ -32,11 +30,8 @@ fn is_associated_function(signature: &Signature) -> bool {
 }
 
 pub fn gen_negated_function(func: ItemFn, args: Args) -> TokenStream {
-
-    let mut args = args;
-
-    let maybe_name = mem::take(&mut args.name);
-    let maybe_docs = mem::take(&mut args.docs);
+    let maybe_name = args.name;
+    let maybe_docs = args.docs;
 
     let negated_identifier = {
         let signature = &func.sig;
@@ -49,7 +44,7 @@ pub fn gen_negated_function(func: ItemFn, args: Args) -> TokenStream {
         // We're not currently able to type resolve so aliases or
         // new-types around bool will fail this check :c
         if !returns_bool(output_type) {
-            return error::build_compile_error(func.span(), Error::DoesNotReturnBool)
+            return error::build_compile_error(func.span(), Error::DoesNotReturnBool);
         }
 
         match build_identifier(maybe_name, &func) {
@@ -162,13 +157,16 @@ fn build_docstring(maybe_docs: Option<String>, original_function: &ItemFn) -> St
         let ident = original_identifier.to_string();
         format!("This is an automatically generated function that denies [`{}`].\nConsult the original function for more information.", ident)
     };
-    
+
     maybe_docs.unwrap_or_else(gen_docs)
-} 
+}
 
 /// If the user supplied a name for the generated function, this function will return it.
-/// If the user didn't, then we'll attempt to generate a name for the generated function 
-fn build_identifier(maybe_name: Option<String>, original_function: &ItemFn) -> Result<String, Error> {
+/// If the user didn't, then we'll attempt to generate a name for the generated function
+fn build_identifier(
+    maybe_name: Option<String>,
+    original_function: &ItemFn,
+) -> Result<String, Error> {
     if let Some(name) = maybe_name {
         Ok(name)
     } else {

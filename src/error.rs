@@ -17,13 +17,13 @@ pub enum Error {
     /// Expected names (in name-value pairs) are either "docs" or "name", but a different name was found
     UnexpectedName,
     ConflictingArgs,
-    NotAppliedToAFunction
+    NotAppliedToAFunction,
 }
 
 pub fn build_compile_error(span: Span, err: Error) -> TokenStream {
     let err_tokens = match err {
         Error::NotAppliedToAFunction => quote_spanned! {
-            span => 
+            span =>
             compile_error!("`negate` can only be applied to functions")
         },
         Error::StringLiteralExpected => quote_spanned! {
@@ -55,9 +55,9 @@ pub fn build_compile_error(span: Span, err: Error) -> TokenStream {
             compile_error!("This identifier is invalid!")
         },
         Error::DoesNotReturnBool => quote_spanned! {
-            span => 
+            span =>
             compile_error!("the function does not seem to return a boolean value.")
-        }
+        },
     };
 
     err_tokens.into()
