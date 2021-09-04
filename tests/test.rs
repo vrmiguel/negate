@@ -5,7 +5,7 @@ fn is_even(x: i32) -> bool {
     x % 2 == 0
 }
 
-#[negate]
+#[negate(docs = "hauahau")]
 fn is_equal<T>(x: T, y: T) -> bool
 where
     T: Eq,

@@ -24,7 +24,7 @@ fn is_associated_function(signature: &Signature) -> bool {
     signature.inputs.iter().any(is_receiver)
 }
 
-pub fn gen_negated_function(func: ItemFn) -> TokenStream {
+pub fn gen_negated_function(func: ItemFn, maybe_docs: Option<String>) -> TokenStream {
     let negated_identifier = {
         let signature = &func.sig;
 
@@ -67,9 +67,9 @@ pub fn gen_negated_function(func: ItemFn) -> TokenStream {
     new_signature.ident = Ident::new(&negated_identifier, Span::call_site());
 
     if is_associated_function(&new_signature) {
-        generate_associated_fn(original_function, new_signature)
+        generate_associated_fn(original_function, new_signature, maybe_docs)
     } else {
-        generate_non_associated_fn(original_function, new_signature)
+        generate_non_associated_fn(original_function, new_signature, maybe_docs)
     }
 }
 
@@ -95,14 +95,25 @@ pub fn gen_negated_function(func: ItemFn) -> TokenStream {
 /// let my_name = Word::new("My Name");
 /// assert!(my_name.is_not_uppercase());
 /// ```
-fn generate_associated_fn(original_function: ItemFn, new_signature: Signature) -> TokenStream {
+fn generate_associated_fn(
+    original_function: ItemFn,
+    new_signature: Signature,
+    maybe_docs: Option<String>,
+) -> TokenStream {
     let visibility = &original_function.vis;
     let arguments = new_signature.inputs.iter().skip(1).map(pattern_from_arg);
     let original_identifier = &original_function.sig.ident;
 
+    let gen_docs = || {
+        let ident = original_identifier.to_string();
+        format!("This is an automatically generated function that denies [`{}`].\nConsult the original function for more information.", ident)
+    };
+    let docs = maybe_docs.unwrap_or_else(gen_docs);
+
     let tokens = quote! {
         #original_function
 
+        #[doc = #docs]
         #visibility #new_signature {
             !self.#original_identifier(#(#arguments),*)
         }
@@ -124,14 +135,25 @@ fn generate_associated_fn(original_function: ItemFn, new_signature: Signature) -
 /// // `is_not_even` was generated
 /// assert!(is_not_even(3));
 /// ```
-fn generate_non_associated_fn(original_function: ItemFn, new_signature: Signature) -> TokenStream {
+fn generate_non_associated_fn(
+    original_function: ItemFn,
+    new_signature: Signature,
+    maybe_docs: Option<String>,
+) -> TokenStream {
     let visibility = &original_function.vis;
     let arguments = new_signature.inputs.iter().map(pattern_from_arg);
     let original_identifier = &original_function.sig.ident;
 
+    let gen_docs = || {
+        let ident = original_identifier.to_string();
+        format!("This is an automatically generated function that denies [`{}`].\nConsult the original function for more information.", ident)
+    };
+    let docs = maybe_docs.unwrap_or_else(gen_docs);
+
     let tokens = quote! {
         #original_function
 
+        #[doc = #docs]
         #visibility #new_signature {
             !#original_identifier(#(#arguments),*)
         }
