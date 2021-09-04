@@ -52,7 +52,7 @@ fn is_equal_test_case() {
 fn associated_fn_is_zero() {
     let int = UnsignedInteger::U32(5);
     assert!(!int.is_zero());
-    assert!(int.is_not_zero());   
+    assert!(int.is_not_zero());
 }
 
 #[test]

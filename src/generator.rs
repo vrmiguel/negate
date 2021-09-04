@@ -73,8 +73,30 @@ pub fn gen_negated_function(func: ItemFn) -> TokenStream {
     }
 }
 
+/// Generates a negated function, where this function is
+/// not associated.
+///
+/// # Examples
+/// ```rust
+/// use negate::negate;
+///
+/// struct Word(&'static str);
+///
+/// impl Word {
+///     pub fn new(word: &'static str) -> Self {
+///         Self (word)
+///     }
+///
+///     #[negate]
+///     pub fn is_uppercase(&self) -> bool {
+///         self.0 == self.0.to_uppercase()
+///     }
+/// }
+/// let my_name = Word::new("My Name");
+/// assert!(my_name.is_not_uppercase());
+/// ```
 fn generate_associated_fn(original_function: ItemFn, new_signature: Signature) -> TokenStream {
-    let visibility = &original_function.vis;    
+    let visibility = &original_function.vis;
     let arguments = new_signature.inputs.iter().skip(1).map(pattern_from_arg);
     let original_identifier = &original_function.sig.ident;
 
@@ -82,7 +104,7 @@ fn generate_associated_fn(original_function: ItemFn, new_signature: Signature) -
         #original_function
 
         #visibility #new_signature {
-            !(self.#original_identifier(#(#arguments),*) )
+            !self.#original_identifier(#(#arguments),*)
         }
     };
 
@@ -103,7 +125,7 @@ fn generate_associated_fn(original_function: ItemFn, new_signature: Signature) -
 /// assert!(is_not_even(3));
 /// ```
 fn generate_non_associated_fn(original_function: ItemFn, new_signature: Signature) -> TokenStream {
-    let visibility = &original_function.vis;    
+    let visibility = &original_function.vis;
     let arguments = new_signature.inputs.iter().map(pattern_from_arg);
     let original_identifier = &original_function.sig.ident;
 
@@ -111,7 +133,7 @@ fn generate_non_associated_fn(original_function: ItemFn, new_signature: Signatur
         #original_function
 
         #visibility #new_signature {
-            !(#original_identifier(#(#arguments),*) )
+            !#original_identifier(#(#arguments),*)
         }
     };
 
