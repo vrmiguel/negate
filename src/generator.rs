@@ -49,7 +49,7 @@ pub fn gen_negated_function(func: ItemFn) -> TokenStream {
             None => {
                 let err = quote_spanned! {
                     func.span() =>
-                    compile_error!("`negate` can only be applied to functions.");
+                    compile_error!("This function does not start with `is_`.");
                 };
 
                 return err.into();
