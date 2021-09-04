@@ -15,7 +15,7 @@ use crate::{
 /// Assumes that this argument isn't a receiver (e.g. `self` or `&self` or `&mut self`)
 fn pattern_from_arg(arg: &FnArg) -> &Pat {
     match arg {
-        FnArg::Receiver(_) => unreachable!("`pattern_from_arg` should never receive patterns"),
+        FnArg::Receiver(_) => unreachable!("`pattern_from_arg` should never receive receiver patterns"),
         FnArg::Typed(pat_type) => &*pat_type.pat,
     }
 }
@@ -155,7 +155,7 @@ fn build_docstring(maybe_docs: Option<String>, original_function: &ItemFn) -> St
 
     let gen_docs = || {
         let ident = original_identifier.to_string();
-        format!("This is an automatically generated function that denies [`{}`].\nConsult the original function for more information.", ident)
+        format!("This is an automatically generated function that negates [`{}`].\nConsult the original function for more information.", ident)
     };
 
     maybe_docs.unwrap_or_else(gen_docs)
