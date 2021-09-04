@@ -5,8 +5,8 @@ fn is_even(x: i32) -> bool {
     x % 2 == 0
 }
 
-#[negate(docs = "`is_equal` returns true if the two given arguments are equal!")]
-fn is_equal<T>(x: T, y: T) -> bool
+#[negate(name = "are_not_equal", docs = "`are_not_equal` returns true if the two given arguments are not equal")]
+fn are_equal<T>(x: T, y: T) -> bool
 where
     T: Eq,
 {
@@ -41,11 +41,11 @@ impl From<&UnsignedInteger> for u64 {
 }
 
 #[test]
-fn is_equal_test_case() {
-    assert!(is_equal(2, 2));
-    assert!(is_not_equal(3, 2));
-    assert!(!is_equal("Andrew", "Johnathan"));
-    assert!(is_not_equal("Andrew", "Johnathan"));
+fn are_equal_test_case() {
+    assert!(are_equal(2, 2));
+    assert!(are_not_equal(3, 2));
+    assert!(!are_equal("Andrew", "Johnathan"));
+    assert!(are_not_equal("Andrew", "Johnathan"));
 }
 
 #[test]
