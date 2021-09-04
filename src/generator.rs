@@ -1,15 +1,27 @@
-use std::mem;
-
 use proc_macro::TokenStream;
 use proc_macro2::Span;
-use quote::{ToTokens, quote, quote_spanned};
-use syn::{FnArg, Ident, ItemFn, Pat, ReturnType, Type, spanned::Spanned};
+use quote::{quote, quote_spanned, ToTokens};
+use syn::{spanned::Spanned, FnArg, Ident, ItemFn, Pat, ReturnType, Signature, Type};
 
-fn pattern_from_arg<'a>(arg: &'a FnArg)-> &'a Pat {
+/// Extracts a type ascription pattern from a function argument
+///
+/// e.g.: if the argument is `name: &str`, returns the pattern that represents `name`.
+///
+/// Assumes that this argument isn't a receiver (e.g. `self` or `&self` or `&mut self`)
+fn pattern_from_arg(arg: &FnArg) -> &Pat {
     match arg {
         FnArg::Receiver(_) => unimplemented!("I don't know what to do about this yet"),
         FnArg::Typed(pat_type) => &*pat_type.pat,
     }
+}
+
+/// Returns true if this signature represents an associated function
+fn is_associated_function(signature: &Signature) -> bool {
+    fn is_receiver(arg: &FnArg) -> bool {
+        matches!(arg, FnArg::Receiver(_))
+    }
+
+    signature.inputs.iter().any(is_receiver)
 }
 
 pub fn gen_negated_function(func: ItemFn) -> TokenStream {
@@ -45,24 +57,44 @@ pub fn gen_negated_function(func: ItemFn) -> TokenStream {
         }
     };
 
-    // We must replicate the original function
-    let original_function = func.clone();
+    // The proc-macro attribute "consumes" the implementation of the function being negated,
+    // so we must must replicate the original function.
+    let original_function = func;
 
-    let mut signature = func.sig;
-    let visibility = func.vis;
+    // Will represent the signature of our negated function!
+    let mut new_signature = original_function.sig.clone();
 
-    let original_identifier = mem::replace(
-        &mut signature.ident,
-        Ident::new(&negated_identifier, Span::call_site()),
-    );
+    new_signature.ident = Ident::new(&negated_identifier, Span::call_site());
 
-    let arguments = signature.inputs.iter().map(pattern_from_arg);
+    if is_associated_function(&new_signature) {
+        todo!("not done yet, chief");
+    } else {
+        generate_non_associated_fn(original_function, new_signature)
+    }
+}
+
+/// Generates a negated function, where this function is
+/// not associated.
+///
+/// # Examples
+/// ```rust
+/// use negate::negate;
+/// #[negate]
+/// fn is_even(x: i32) -> bool {
+///     x % 2 == 0
+/// }
+/// // `is_not_even` was generated
+/// assert!(is_not_even(3));
+/// ```
+fn generate_non_associated_fn(original_function: ItemFn, new_signature: Signature) -> TokenStream {
+    let visibility = &original_function.vis;    
+    let arguments = new_signature.inputs.iter().map(pattern_from_arg);
+    let original_identifier = &original_function.sig.ident;
 
     let tokens = quote! {
-
         #original_function
 
-        #visibility #signature {
+        #visibility #new_signature {
             !(#original_identifier(#(#arguments),*) )
         }
     };

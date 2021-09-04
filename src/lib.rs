@@ -2,7 +2,7 @@ mod generator;
 
 use proc_macro::TokenStream;
 use quote::quote_spanned;
-use syn::{Item, spanned::Spanned};
+use syn::{spanned::Spanned, Item};
 
 use crate::generator::gen_negated_function;
 
