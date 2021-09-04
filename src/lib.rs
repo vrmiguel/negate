@@ -51,7 +51,7 @@ pub fn negate(attrib_args: TokenStream, input: TokenStream) -> TokenStream {
 
     let args = match parse_args(args) {
         Ok(parsed_args) => parsed_args,
-        Err(err) => return crate::error::build_compile_error(span, err)
+        Err(err) => return crate::error::build_compile_error(span, err),
     };
 
     match item {

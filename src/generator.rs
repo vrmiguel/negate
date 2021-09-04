@@ -1,9 +1,14 @@
+use std::mem;
+
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::{quote, quote_spanned, ToTokens};
 use syn::{spanned::Spanned, FnArg, Ident, ItemFn, Pat, ReturnType, Signature, Type};
 
-use crate::args::Args;
+use crate::{
+    args::Args,
+    error::{self, Error},
+};
 
 /// Extracts a type ascription pattern from a function argument
 ///
@@ -27,6 +32,12 @@ fn is_associated_function(signature: &Signature) -> bool {
 }
 
 pub fn gen_negated_function(func: ItemFn, args: Args) -> TokenStream {
+
+    let mut args = args;
+
+    let maybe_name = mem::take(&mut args.name);
+    let maybe_docs = mem::take(&mut args.docs);
+
     let negated_identifier = {
         let signature = &func.sig;
 
@@ -46,15 +57,10 @@ pub fn gen_negated_function(func: ItemFn, args: Args) -> TokenStream {
             return err.into();
         }
 
-        match negate_identifier(&signature.ident) {
-            Some(id) => id,
-            None => {
-                let err = quote_spanned! {
-                    func.span() =>
-                    compile_error!("This function does not start with `is_`.");
-                };
-
-                return err.into();
+        match build_identifier(maybe_name, &func) {
+            Ok(id) => id,
+            Err(err) => {
+                return error::build_compile_error(func.span(), err);
             }
         }
     };
@@ -68,10 +74,12 @@ pub fn gen_negated_function(func: ItemFn, args: Args) -> TokenStream {
 
     new_signature.ident = Ident::new(&negated_identifier, Span::call_site());
 
+    let doc_string = build_docstring(maybe_docs, &original_function);
+
     if is_associated_function(&new_signature) {
-        generate_associated_fn(original_function, new_signature, args)
+        generate_associated_fn(original_function, new_signature, doc_string)
     } else {
-        generate_non_associated_fn(original_function, new_signature, args)
+        generate_non_associated_fn(original_function, new_signature, doc_string)
     }
 }
 
@@ -100,22 +108,16 @@ pub fn gen_negated_function(func: ItemFn, args: Args) -> TokenStream {
 fn generate_associated_fn(
     original_function: ItemFn,
     new_signature: Signature,
-    args: Args,
+    doc_string: String,
 ) -> TokenStream {
     let visibility = &original_function.vis;
     let arguments = new_signature.inputs.iter().skip(1).map(pattern_from_arg);
     let original_identifier = &original_function.sig.ident;
 
-    let gen_docs = || {
-        let ident = original_identifier.to_string();
-        format!("This is an automatically generated function that denies [`{}`].\nConsult the original function for more information.", ident)
-    };
-    let docs = args.docs.unwrap_or_else(gen_docs);
-
     let tokens = quote! {
         #original_function
 
-        #[doc = #docs]
+        #[doc = #doc_string]
         #visibility #new_signature {
             !self.#original_identifier(#(#arguments),*)
         }
@@ -140,28 +142,44 @@ fn generate_associated_fn(
 fn generate_non_associated_fn(
     original_function: ItemFn,
     new_signature: Signature,
-    args: Args,
+    doc_string: String,
 ) -> TokenStream {
     let visibility = &original_function.vis;
     let arguments = new_signature.inputs.iter().map(pattern_from_arg);
     let original_identifier = &original_function.sig.ident;
 
-    let gen_docs = || {
-        let ident = original_identifier.to_string();
-        format!("This is an automatically generated function that denies [`{}`].\nConsult the original function for more information.", ident)
-    };
-    let docs = args.docs.unwrap_or_else(gen_docs);
-
     let tokens = quote! {
         #original_function
 
-        #[doc = #docs]
+        #[doc = #doc_string]
         #visibility #new_signature {
             !#original_identifier(#(#arguments),*)
         }
     };
 
     tokens.into()
+}
+
+fn build_docstring(maybe_docs: Option<String>, original_function: &ItemFn) -> String {
+    let original_identifier = &original_function.sig.ident;
+
+    let gen_docs = || {
+        let ident = original_identifier.to_string();
+        format!("This is an automatically generated function that denies [`{}`].\nConsult the original function for more information.", ident)
+    };
+    
+    maybe_docs.unwrap_or_else(gen_docs)
+} 
+
+/// If the user supplied a name for the generated function, this function will return it.
+/// If the user didn't, then we'll attempt to generate a name for the generated function 
+fn build_identifier(maybe_name: Option<String>, original_function: &ItemFn) -> Result<String, Error> {
+    if let Some(name) = maybe_name {
+        Ok(name)
+    } else {
+        let original_identifier = &original_function.sig.ident;
+        negate_identifier(original_identifier)
+    }
 }
 
 /// Returns true if the given return type is a boolean value.
@@ -179,16 +197,20 @@ fn returns_bool(return_type: &ReturnType) -> bool {
     }
 }
 
-fn negate_identifier(ident: &Ident) -> Option<String> {
-    let identifier = ident.to_string();
-
+fn get_adjective(identifier: &str) -> Option<&str> {
     if !identifier.starts_with("is_") {
-        return None;
+        None?;
     }
 
     // Assuming we get an input of the form `is_adjective` (e.g. `is_even`, `is_odd`),
     // we want to extract just the adjective in order to negate it right after.
-    let adjective = identifier.get(3..).expect("The identifier is too short!");
+    identifier.get(3..)
+}
 
-    Some(format!("is_not_{}", adjective))
+fn negate_identifier(ident: &Ident) -> Result<String, Error> {
+    let identifier = ident.to_string();
+
+    let adjective = get_adjective(&identifier).ok_or(Error::InvalidIdentifier)?;
+
+    Ok(format!("is_not_{}", adjective))
 }

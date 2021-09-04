@@ -3,6 +3,7 @@ use proc_macro2::Span;
 use quote::quote_spanned;
 
 pub enum Error {
+    InvalidIdentifier,
     /// A string literal was expected but not found
     StringLiteralExpected,
     /// Too many arguments were supplied, e.g. `name = negated_function, docs = "It's a negated function.`
@@ -41,7 +42,11 @@ pub fn build_compile_error(span: Span, err: Error) -> TokenStream {
         Error::ConflictingArgs => quote_spanned! {
             span =>
             compile_error!("Conflicting arguments were found. E.g. `name = generated_fn, name = my_name`");
-        }
+        },
+        Error::InvalidIdentifier => quote_spanned! {
+            span =>
+            compile_error!("This identifier is invalid!")
+        },
     };
 
     err_tokens.into()
