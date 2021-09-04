@@ -3,10 +3,10 @@ mod error;
 mod generator;
 
 use proc_macro::TokenStream;
-use quote::quote_spanned;
 use syn::{parse_macro_input, spanned::Spanned, AttributeArgs, Item};
 
 use crate::args::parse_args;
+use crate::error::Error;
 use crate::generator::gen_negated_function;
 
 /// The [`negate`](crate::negate) attribute macro creates a new function that _negates_ the function it was given.
@@ -56,13 +56,6 @@ pub fn negate(attrib_args: TokenStream, input: TokenStream) -> TokenStream {
 
     match item {
         Item::Fn(function) => gen_negated_function(function, args),
-        other => {
-            let err = quote_spanned! {
-                other.span() =>
-                compile_error!("`negate` can only be applied to functions.");
-            };
-
-            err.into()
-        }
+        other => error::build_compile_error(other.span(), Error::NotAppliedToAFunction)
     }
 }

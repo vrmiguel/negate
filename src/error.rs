@@ -3,6 +3,8 @@ use proc_macro2::Span;
 use quote::quote_spanned;
 
 pub enum Error {
+    /// The macro was applied to a function that does not seem to return bool
+    DoesNotReturnBool,
     InvalidIdentifier,
     /// A string literal was expected but not found
     StringLiteralExpected,
@@ -15,10 +17,15 @@ pub enum Error {
     /// Expected names (in name-value pairs) are either "docs" or "name", but a different name was found
     UnexpectedName,
     ConflictingArgs,
+    NotAppliedToAFunction
 }
 
 pub fn build_compile_error(span: Span, err: Error) -> TokenStream {
     let err_tokens = match err {
+        Error::NotAppliedToAFunction => quote_spanned! {
+            span => 
+            compile_error!("`negate` can only be applied to functions")
+        },
         Error::StringLiteralExpected => quote_spanned! {
             span =>
             compile_error!("A string literal was expected but not found.");
@@ -47,6 +54,10 @@ pub fn build_compile_error(span: Span, err: Error) -> TokenStream {
             span =>
             compile_error!("This identifier is invalid!")
         },
+        Error::DoesNotReturnBool => quote_spanned! {
+            span => 
+            compile_error!("the function does not seem to return a boolean value.")
+        }
     };
 
     err_tokens.into()

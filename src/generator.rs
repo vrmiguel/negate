@@ -2,7 +2,7 @@ use std::mem;
 
 use proc_macro::TokenStream;
 use proc_macro2::Span;
-use quote::{quote, quote_spanned, ToTokens};
+use quote::{quote, ToTokens};
 use syn::{spanned::Spanned, FnArg, Ident, ItemFn, Pat, ReturnType, Signature, Type};
 
 use crate::{
@@ -49,12 +49,7 @@ pub fn gen_negated_function(func: ItemFn, args: Args) -> TokenStream {
         // We're not currently able to type resolve so aliases or
         // new-types around bool will fail this check :c
         if !returns_bool(output_type) {
-            let err = quote_spanned! {
-                func.span() =>
-                compile_error!("the function does not seem to return a boolean value.");
-            };
-
-            return err.into();
+            return error::build_compile_error(func.span(), Error::DoesNotReturnBool)
         }
 
         match build_identifier(maybe_name, &func) {
